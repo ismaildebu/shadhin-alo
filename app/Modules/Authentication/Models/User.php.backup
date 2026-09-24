@@ -1,0 +1,231 @@
+<?php
+
+namespace App\Modules\Authentication\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Support\Str;
+
+class User extends Authenticatable
+{
+    use HasFactory, HasApiTokens, Notifiable, SoftDeletes;
+
+    /**
+     * টেবিল নাম
+     */
+    protected $table = 'users';
+
+    /**
+     * মাল্স অ্যাসাইনমেন্ট থেকে সুরক্ষিত বৈশিষ্ট্য
+     */
+    protected $guarded = ['id', 'password'];
+
+    /**
+     * লুকানো বৈশিষ্ট্য
+     */
+    protected $hidden = [
+        'password',
+        'remember_token',
+        'two_factor_secret',
+        'two_factor_backup_codes',
+        'password_reset_token',
+        'email_verification_token',
+    ];
+
+    /**
+     * ডেটা টাইপ ক্যাস্টিং
+     */
+    protected $casts = [
+        'email_verified_at' => 'datetime',
+        'password_changed_at' => 'datetime',
+        'last_login_at' => 'datetime',
+        'locked_until' => 'datetime',
+        'two_factor_enabled_at' => 'datetime',
+        'activated_at' => 'datetime',
+        'deactivated_at' => 'datetime',
+        'gdpr_accepted_at' => 'datetime',
+        'marketing_consent_at' => 'datetime',
+        'device_verification_at' => 'datetime',
+        'password_reset_expires_at' => 'datetime',
+        'email_verification_expires_at' => 'datetime',
+        'two_factor_enabled' => 'boolean',
+        'marketing_consent' => 'boolean',
+        'features' => 'array',
+        'trusted_devices' => 'array',
+    ];
+
+    /**
+     * বুট মডেল
+     */
+    protected static function booted(): void
+    {
+        static::creating(function (self $model) {
+            // UUID স্বয়ংক্রিয়ভাবে তৈরি করুন
+            if (!$model->uuid) {
+                $model->uuid = Str::uuid();
+            }
+        });
+    }
+
+    /**
+     * ব্যবহারকারী যাচাইকৃত কিনা পরীক্ষা করুন
+     */
+    public function isVerified(): bool
+    {
+        return !is_null($this->email_verified_at);
+    }
+
+    /**
+     * ব্যবহারকারী সক্রিয় কিনা পরীক্ষা করুন
+     */
+    public function isActive(): bool
+    {
+        return $this->status === 'active' && $this->isVerified();
+    }
+
+    /**
+     * ব্যবহারকারী লক করা আছে কিনা পরীক্ষা করুন
+     */
+    public function isLocked(): bool
+    {
+        return $this->locked_until && $this->locked_until->isFuture();
+    }
+
+    /**
+     * ব্যবহারকারীর লগইন প্রচেষ্টা রিসেট করুন
+     */
+    public function resetLoginAttempts(): void
+    {
+        $this->update([
+            'login_attempts' => 0,
+            'locked_until' => null,
+        ]);
+    }
+
+    /**
+     * লগইন প্রচেষ্টা বৃদ্ধি করুন
+     */
+    public function incrementLoginAttempts(): void
+    {
+        $attempts = $this->login_attempts + 1;
+        $lockTime = null;
+
+        $maxAttempts = config('authentication.max_login_attempts');
+        
+        if ($attempts >= $maxAttempts && !config('authentication.disable_lockout')) {
+            $lockTime = now()->addMinutes(
+                config('authentication.login_attempt_lock_time')
+            );
+        }
+
+        $this->update([
+            'login_attempts' => $attempts,
+            'locked_until' => $lockTime,
+        ]);
+    }
+
+    /**
+     * ২FA সক্ষম করুন
+     */
+    public function enableTwoFactor(string $secret): void
+    {
+        $backupCodes = $this->generateBackupCodes();
+
+        $this->update([
+            'two_factor_secret' => $secret,
+            'two_factor_enabled' => true,
+            'two_factor_enabled_at' => now(),
+            'two_factor_backup_codes' => $backupCodes,
+        ]);
+    }
+
+    /**
+     * ২FA অক্ষম করুন
+     */
+    public function disableTwoFactor(): void
+    {
+        $this->update([
+            'two_factor_secret' => null,
+            'two_factor_enabled' => false,
+            'two_factor_backup_codes' => null,
+        ]);
+    }
+
+    /**
+     * ব্যাকআপ কোড তৈরি করুন
+     */
+    public function generateBackupCodes(int $count = 10): array
+    {
+        $codes = [];
+        for ($i = 0; $i < $count; $i++) {
+            $codes[] = Str::random(8) . '-' . Str::random(8);
+        }
+        return $codes;
+    }
+
+    /**
+     * API টোকেন তৈরি করুন
+     */
+    public function createApiToken(string $name = 'default'): string
+    {
+        return $this->createToken(
+            $name,
+            ['*'],
+            now()->addDays(config('authentication.api_token_lifetime'))
+        )->plainTextToken;
+    }
+
+    /**
+     * সম্পূর্ণ নাম পান
+     */
+    public function getFullNameAttribute(): string
+    {
+        return trim("{$this->first_name} {$this->last_name}");
+    }
+
+    /**
+     * ব্যবহারকারী অ্যাডমিন কিনা পরীক্ষা করুন
+     */
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    /**
+     * ব্যবহারকারী সম্পাদক কিনা পরীক্ষা করুন
+     */
+    public function isEditor(): bool
+    {
+        return in_array($this->role, ['admin', 'editor_in_chief', 'editor']);
+    }
+
+    /**
+     * ব্যবহারকারী লেখক কিনা পরীক্ষা করুন
+     */
+    public function isAuthor(): bool
+    {
+        return in_array($this->role, ['author', 'editor', 'editor_in_chief', 'admin']);
+    }
+
+    /**
+     * লগইন প্রচেষ্টা সম্পর্ক
+     */
+    public function loginAttempts()
+    {
+        return $this->hasMany(LoginAttempt::class);
+    }
+
+    /**
+     * পাসওয়ার্ড পরিবর্তনের সময় আপডেট করুন
+     */
+    public function setPasswordAttribute($value)
+    {
+        if ($value) {
+            $this->attributes['password'] = bcrypt($value);
+            $this->attributes['password_changed_at'] = now();
+        }
+    }
+}
