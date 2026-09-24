@@ -50,6 +50,7 @@ class RolePermissionSeeder extends Seeder
             'editor' => ['article.view', 'article.create', 'article.edit', 'article.publish'],
             'author' => ['article.view', 'article.create', 'article.edit'],
             'contributor' => ['article.view', 'article.create'],
+            'reporter' => ['article.view', 'article.create'],
             'subscriber' => ['article.view'],
         ];
 

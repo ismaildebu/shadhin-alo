@@ -16,8 +16,14 @@ return Application::configure(basePath: dirname(__DIR__))
             require base_path('routes/user-management.php');
             require base_path('routes/settings.php');
             require base_path('routes/audit.php');
+            require base_path('routes/articles.php');
+            require base_path('routes/comments.php');
         },
     )
+
+        ->withSchedule(function (\Illuminate\Console\Scheduling\Schedule $schedule): void {
+        $schedule->command('articles:publish-scheduled')->everyMinute();
+    })
 
     ->withMiddleware(function (Middleware $middleware): void {
         //
@@ -25,3 +31,5 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();
+
+
