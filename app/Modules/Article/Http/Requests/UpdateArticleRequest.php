@@ -33,6 +33,8 @@ class UpdateArticleRequest extends FormRequest
             'categories.*' => ['integer', 'exists:categories,id'],
             'subcategories' => ['sometimes', 'array'],
             'subcategories.*' => ['integer', 'exists:subcategories,id'],
+            'tags' => ['sometimes', 'array'],
+            'tags.*' => ['integer', 'exists:tags,id'],
             'slug' => [
                 'sometimes',
                 'nullable',
@@ -45,8 +47,16 @@ class UpdateArticleRequest extends FormRequest
             'featured_image' => ['sometimes', 'nullable', 'string'],
             'status' => ['sometimes', 'nullable', 'string'],
             'featured' => ['sometimes', 'boolean'],
+            'breaking' => ['sometimes', 'boolean'],
+            'lead' => ['sometimes', 'boolean'],
+            'sort_order' => ['sometimes', 'integer'],
+            'meta_title' => ['sometimes', 'nullable', 'string', 'max:255'],
+            'meta_description' => ['sometimes', 'nullable', 'string', 'max:500'],
+            'og_image' => ['sometimes', 'nullable', 'string', 'url'],
             'published_at' => ['sometimes', 'nullable', 'date'],
             'scheduled_publish_at' => ['sometimes', 'nullable', 'date'],
         ];
     }
 }
+
+

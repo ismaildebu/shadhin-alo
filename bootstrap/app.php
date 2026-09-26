@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
             require base_path('routes/audit.php');
             require base_path('routes/articles.php');
             require base_path('routes/comments.php');
+            require base_path('app/Modules/Dashboard/routes/dashboard.php');
+            require base_path('app/Modules/Home/routes/home.php');
         },
     )
 
@@ -25,11 +27,14 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('articles:publish-scheduled')->everyMinute();
     })
 
-    ->withMiddleware(function (Middleware $middleware): void {
-        //
-    })
+   ->withMiddleware(function (Middleware $middleware): void {
+    $middleware->web(append: [
+        \Illuminate\View\Middleware\ShareErrorsFromSession::class,
+    ]);
+})
     ->withExceptions(function (Exceptions $exceptions): void {
         //
     })->create();
+
 
 

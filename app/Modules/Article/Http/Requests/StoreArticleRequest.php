@@ -23,6 +23,9 @@ class StoreArticleRequest extends FormRequest
             'featured_image' => ['sometimes', 'string', 'url'],
             'status' => ['sometimes', 'in:draft,pending_review,published,archived'],
             'featured' => ['sometimes', 'boolean'],
+            'breaking' => ['sometimes', 'boolean'],
+            'lead' => ['sometimes', 'boolean'],
+            'sort_order' => ['sometimes', 'integer'],
             'meta_title' => ['sometimes', 'string', 'max:255'],
             'meta_description' => ['sometimes', 'string', 'max:500'],
             'og_image' => ['sometimes', 'string', 'url'],
@@ -36,3 +39,5 @@ class StoreArticleRequest extends FormRequest
         ];
     }
 }
+
+

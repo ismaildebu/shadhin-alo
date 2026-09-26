@@ -180,7 +180,9 @@ public function test_published_article_is_returned_by_public_articles_endpoint()
 
     public function test_authenticated_user_is_assigned_as_article_author(): void
     {
+        $this->seed(\Database\Seeders\RolePermissionSeeder::class);
         $user = User::factory()->create();
+        $user->assignRole('author');
         $user->assignRole('author');
 
         $this->actingAs($user);
@@ -434,6 +436,60 @@ public function test_published_article_is_returned_by_public_articles_endpoint()
         $this->assertDatabaseHas('article_subcategories', [
             'article_id' => $article->id,
             'subcategory_id' => $newSubcategory->id,
+        ]);
+    }
+    public function test_article_can_be_created_with_seo_fields(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user);
+
+        $response = $this->postJson('/articles', [
+            'title' => 'SEO Test Article',
+            'slug' => 'seo-test-article',
+            'excerpt' => 'SEO test excerpt.',
+            'content' => str_repeat('SEO test content. ', 10),
+            'meta_title' => 'SEO Test Meta Title',
+            'meta_description' => 'SEO test meta description.',
+            'og_image' => 'https://example.com/seo-image.jpg',
+        ]);
+
+        $response->assertCreated();
+
+        $this->assertDatabaseHas('articles', [
+            'title' => 'SEO Test Article',
+            'meta_title' => 'SEO Test Meta Title',
+            'meta_description' => 'SEO test meta description.',
+            'og_image' => 'https://example.com/seo-image.jpg',
+        ]);
+    }
+
+    public function test_article_seo_fields_can_be_updated(): void
+    {
+        $author = User::factory()->create();
+
+        $article = Article::factory()->create([
+            'author_id' => $author->id,
+            'meta_title' => 'Old Meta Title',
+            'meta_description' => 'Old description.',
+            'og_image' => 'https://example.com/old-image.jpg',
+        ]);
+
+        $this->actingAs($author);
+
+        $response = $this->putJson("/articles/{$article->id}", [
+            'meta_title' => 'Updated Meta Title',
+            'meta_description' => 'Updated description.',
+            'og_image' => 'https://example.com/new-image.jpg',
+        ]);
+
+        $response->assertSuccessful();
+
+        $this->assertDatabaseHas('articles', [
+            'id' => $article->id,
+            'meta_title' => 'Updated Meta Title',
+            'meta_description' => 'Updated description.',
+            'og_image' => 'https://example.com/new-image.jpg',
         ]);
     }
 }

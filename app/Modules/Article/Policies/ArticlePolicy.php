@@ -16,15 +16,15 @@ class ArticlePolicy
 
     public function view(?User $user, Article $article): bool
     {
-        return $article->isPublished() 
+        return $article->isPublished()
             || ($user && ($user->isAdmin() || $user->id === $article->author_id));
     }
 
     public function create(User $user): bool
     {
-        return $user->hasRole('editor') 
-            || $user->hasRole('admin') 
-            || $user->hasPermission('article.create') 
+        return $user->hasRole('editor')
+            || $user->hasRole('admin')
+            || $user->hasPermission('article.create')
             || $user->isAdmin();
     }
 
@@ -38,14 +38,14 @@ class ArticlePolicy
 
     public function publish(User $user, Article $article): bool
     {
-        return $user->hasRole('editor') 
-            || $user->hasRole('admin') 
+        return $user->hasRole('editor')
+            || $user->hasRole('admin')
             || $user->hasPermission('article.publish');
     }
 
     public function delete(User $user, Article $article): bool
     {
-        return $user->hasRole('admin') 
+        return $user->hasRole('admin')
             || $user->hasPermission('article.delete');
     }
 }

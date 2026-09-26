@@ -25,6 +25,8 @@ class ArticleResource extends JsonResource
             'status' => $this->status?->value,
             'status_label' => $this->status?->label(),
             'featured' => $this->featured,
+            'breaking' => $this->breaking,
+            'lead' => $this->lead,
             'author' => [
                 'id' => $this->author?->id,
                 'name' => $this->author?->name,
@@ -44,3 +46,4 @@ class ArticleResource extends JsonResource
         ];
     }
 }
+

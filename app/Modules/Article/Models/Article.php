@@ -18,21 +18,21 @@ class Article extends Model
     use HasFactory, SoftDeletes, Auditable, HasComments;
 
     protected static function booted(): void
-{
-    static::creating(function (Article $article): void {
-        $article->status ??= ArticleStatus::DRAFT;
+    {
+        static::creating(function (Article $article): void {
+            $article->status ??= ArticleStatus::DRAFT;
 
-        if (empty($article->slug) && ! empty($article->title)) {
-            $article->slug = \Illuminate\Support\Str::slug($article->title);
-        }
-    });
+            if (empty($article->slug) && ! empty($article->title)) {
+                $article->slug = \Illuminate\Support\Str::slug($article->title);
+            }
+        });
 
-    static::updating(function (Article $article): void {
-        if ($article->isDirty('title') && ! $article->isDirty('slug')) {
-            $article->slug = \Illuminate\Support\Str::slug($article->title);
-        }
-    });
-}
+        static::updating(function (Article $article): void {
+            if ($article->isDirty('title') && ! $article->isDirty('slug')) {
+                $article->slug = \Illuminate\Support\Str::slug($article->title);
+            }
+        });
+    }
 
     protected static function newFactory(): \Illuminate\Database\Eloquent\Factories\Factory
     {
@@ -41,22 +41,33 @@ class Article extends Model
 
     protected $table = 'articles';
 
-   protected $fillable = [
-    'author_id',
-    'title',
-    'slug',
-    'excerpt',
-    'content',
-    'featured_image',
-    'status',
-    'featured',
-    'published_at',
-    'scheduled_publish_at',
-];
+    protected $fillable = [
+        'author_id',
+        'series_id',
+        'title',
+        'slug',
+        'excerpt',
+        'content',
+        'featured_image',
+        'status',
+        'content_type',
+        'featured',
+        'breaking',
+        'lead',
+        'published_at',
+        'scheduled_publish_at',
+        'sort_order',
+        'meta_title',
+        'meta_description',
+        'og_image',
+    ];
 
     protected $casts = [
         'status' => ArticleStatus::class,
         'featured' => 'bool',
+        'breaking' => 'bool',
+        'lead' => 'bool',
+        'sort_order' => 'int',
         'views_count' => 'int',
         'published_at' => 'datetime',
         'scheduled_publish_at' => 'datetime',
@@ -72,10 +83,16 @@ class Article extends Model
         return $this->belongsTo(\App\Modules\Authentication\Models\User::class, 'author_id');
     }
 
+    public function series(): BelongsTo
+    {
+        return $this->belongsTo(Series::class, 'series_id');
+    }
+
     public function categories(): BelongsToMany
     {
         return $this->belongsToMany(Category::class, 'article_categories');
     }
+
     public function subcategories(): BelongsToMany
     {
         return $this->belongsToMany(Subcategory::class, 'article_subcategories');
@@ -84,6 +101,11 @@ class Article extends Model
     public function tags(): BelongsToMany
     {
         return $this->belongsToMany(Tag::class, 'article_tags');
+    }
+
+    public function districts(): BelongsToMany
+    {
+        return $this->belongsToMany(District::class, 'article_district');
     }
 
     public function scopePublished($query)
@@ -96,9 +118,44 @@ class Article extends Model
         return $query->where('featured', true)->published();
     }
 
+    public function scopeBreaking($query)
+    {
+        return $query->where('breaking', true)->published();
+    }
+
+    public function scopeLead($query)
+    {
+        return $query->where('lead', true)->published();
+    }
+
     public function scopeByAuthor($query, int $authorId)
     {
         return $query->where('author_id', $authorId);
+    }
+
+    public function scopeBreakingNow($query)
+    {
+        return $query->where('breaking', true)
+            ->published()
+            ->orderByDesc('published_at')
+            ->limit(3);
+    }
+
+    public function scopeOpinion($query)
+    {
+        return $query->where('content_type', 'opinion')->published();
+    }
+
+    public function scopeInvestigation($query)
+    {
+        return $query->where('content_type', 'investigation')->published();
+    }
+
+    public function scopeInDistrict($query, int $districtId)
+    {
+        return $query->whereHas('districts', function ($q) use ($districtId) {
+            $q->where('districts.id', $districtId);
+        });
     }
 
     public function publish(): void
